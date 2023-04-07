@@ -59,15 +59,21 @@ def validate_num(val):
         else:
             size+=var
     
-    positive_int(num)
-    # Sjekk om du kan gjøre om til byte før du sender den videre
-    if(size == 'MB' or size == 'KB' or size =='B'):
+    if(size == 'MB'):
+        fullList[0]=num*1000000
+        print(fullList)
+        return fullList
+    elif(size == 'KB'):
+        fullList[0]=num*1000
+        print(fullList)
+        return fullList
+    elif(size == 'B'):
         fullList[0]=num
-        fullList[1]=size
         print(fullList)
         return fullList
     else: 
         quit()
+
 
 
 
@@ -77,29 +83,34 @@ def server():
     print('A simpleperf server is listening on port', args.port)
     server_port = args.port
     server_ip = args.bind
-    print(server_ip)
 
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind((server_ip, server_port))
     serverSocket.listen(1)
-
-    totalTime = args.time
-    print(totalTime)
-   
+    data = bytes(1000)
+    
 
     while True:
         try:
-            print("try")
             connectionSocket, addr = serverSocket.accept()
-            print("etter try")
-            totalTime = 25
+            totalTime = int(connectionSocket.recv(1000).decode())
             
+            print("Totaltid =", totalTime)
             startTime = time.time() 
             currTime = time.time()-startTime
-            print(currTime)
-            while (currTime < totalTime):
-                send = connectionSocket.send("wohooo".encode()) 
+            print("STart tid = ", currTime)
+            while (True):
+                print("fær bye msg")
+                connectionSocket.send(data) 
                 print("sender!")
+                currTime=time.time()-startTime
+                print(currTime)
+                if (currTime > totalTime):
+                    byeMsg = connectionSocket.recv(24).decode()
+                    print("Bye msg =", byeMsg)
+                    connectionSocket.send("ACK".encode())
+                    #print("Sender ack")
+                    
         except:
             print("Noe gikk galt")
             quit()
@@ -126,9 +137,11 @@ def client():
     while True:
         recieve = clientSocket.recv(1000)
         if (currTime > totalTime):
-            print("Ferdig med å sende")
             clientSocket.send("BYE".encode())
-            quit()
+
+        if(recieve.decode() == "ACK"):
+            print("ACK recieved, quit socket")
+            quit()      
         currTime = time.time()-startTime
         print(currTime)
 
