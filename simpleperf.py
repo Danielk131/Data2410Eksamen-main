@@ -87,29 +87,38 @@ def server():
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind((server_ip, server_port))
     serverSocket.listen(1)
-    data = bytes(1000)
+    
+    
     
 
     while True:
         try:
             connectionSocket, addr = serverSocket.accept()
             totalTime = int(connectionSocket.recv(1000).decode())
-            
             print("Totaltid =", totalTime)
+            connectionSocket.send("OK".encode())
+            
             startTime = time.time() 
             currTime = time.time()-startTime
             print("STart tid = ", currTime)
+            
             while (True):
                 print("fær bye msg")
-                connectionSocket.send(data) 
+                rec = connectionSocket.recv(1000) 
                 print("sender!")
                 currTime=time.time()-startTime
                 print(currTime)
-                if (currTime > totalTime):
-                    byeMsg = connectionSocket.recv(24).decode()
-                    print("Bye msg =", byeMsg)
+                if ("BYE" in rec.decode()):
+                    #byeMsg = connectionSocket.recv(24).decode()
+                    print("Bye msg =", rec.decode())
                     connectionSocket.send("ACK".encode())
                     #print("Sender ack")
+                    realTime = time.time()-startTime
+                    print("Virkelig totaltid =", realTime)
+
+                    break
+
+                    
                     
         except:
             print("Noe gikk galt")
@@ -125,23 +134,29 @@ def client():
     print('A simpleperf client with', args.serverip," is connected with ", args.port)
     server_addr = str(args.serverip)
     server_port = args.port
+    data = bytes(1000)
+
 
     clientSocket = socket(AF_INET, SOCK_STREAM)
     clientSocket.connect((server_addr, server_port))
     clientSocket.send(str(args.time).encode())
-
+    clientSocket.recv(1000).decode()
 
     startTime = time.time()
     currTime = time.time() - startTime
     totalTime = args.time
     while True:
-        recieve = clientSocket.recv(1000)
+        clientSocket.send(data)
         if (currTime > totalTime):
             clientSocket.send("BYE".encode())
+            ackMsg = clientSocket.recv(200).decode()
+            if(ackMsg == "ACK"):
+                print("ACK =", ackMsg)
+                realTime = time.time()-startTime
+                print("Virkelig totaltid =", realTime)
+                clientSocket.close()
 
-        if(recieve.decode() == "ACK"):
-            print("ACK recieved, quit socket")
-            quit()      
+                quit()      
         currTime = time.time()-startTime
         print(currTime)
 
