@@ -3,6 +3,9 @@ import sys
 import ipaddress
 from socket import * 
 import time
+from tabulate import tabulate
+
+
 def validate_number(val):
     try:
         value = int(val)
@@ -101,13 +104,14 @@ def server():
             startTime = time.time() 
             currTime = time.time()-startTime
             print("STart tid = ", currTime)
-            
+            totalMB = 0
             while (True):
                 print("fær bye msg")
                 rec = connectionSocket.recv(1000) 
                 print("sender!")
                 currTime=time.time()-startTime
                 print(currTime)
+                totalMB+=0.001
                 if ("BYE" in rec.decode()):
                     #byeMsg = connectionSocket.recv(24).decode()
                     print("Bye msg =", rec.decode())
@@ -115,6 +119,8 @@ def server():
                     #print("Sender ack")
                     realTime = time.time()-startTime
                     print("Virkelig totaltid =", realTime)
+                    print("TotalMB= ", totalMB)
+                    print("MegaBytes per sek = ", totalMB/realTime)
 
                     break
 
@@ -145,20 +151,46 @@ def client():
     startTime = time.time()
     currTime = time.time() - startTime
     totalTime = args.time
+    interval = args.interval
+    intervalTimer = 0
+    startInterval = 0
+    endInterval = startInterval+interval
+    totalMB = 0
+    outputData=[]
+    transfer=0
+    print("-----------------------------------------------------------")
+    print("A simpleperf client connecting to server ", args.serverip)
+    print("-----------------------------------------------------------")
+    outputID=f"{args.serverip}:{args.port}"
+
     while True:
         clientSocket.send(data)
+        totalMB+=0.001
+        transfer+=0.001
+        if(currTime > endInterval):
+            print("SLuttinterval før", endInterval)
+            bandwidth = transfer/interval
+            outputData.append([outputID, f"{startInterval}-{endInterval}", transfer, f"{bandwidth} Mbps"])
+            startInterval=endInterval
+            endInterval+=interval
+            print("Sluttinterval etter", endInterval)
+            transfer=0
+            print("transfer ok")
         if (currTime > totalTime):
             clientSocket.send("BYE".encode())
             ackMsg = clientSocket.recv(200).decode()
+            
             if(ackMsg == "ACK"):
                 print("ACK =", ackMsg)
                 realTime = time.time()-startTime
                 print("Virkelig totaltid =", realTime)
+                print("Total MB = ", totalMB)
+                print("MB per second =", totalMB/realTime)
+                print(tabulate(outputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                 clientSocket.close()
-
                 quit()      
         currTime = time.time()-startTime
-        print(currTime)
+        
 
 parser = argparse.ArgumentParser(description="positional arguments")
 
