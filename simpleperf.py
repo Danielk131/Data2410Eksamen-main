@@ -111,17 +111,11 @@ def server():
             connectionSocket.send("OK".encode())
             
             startTime = time.time() 
-            currTime = time.time()-startTime
-            print("STart tid = ", currTime)
             recieved_Megabytes = 0
             
             #Timebased 
             while (True):
-                print("fær bye msg")
-                rec = connectionSocket.recv(1000) 
-                print("sender!")
-                currTime=time.time()-startTime
-                print(currTime)
+                rec = connectionSocket.recv(1000)
                 recieved_Megabytes+=0.001
                 if ("BYE" in rec.decode()):
                     #byeMsg = connectionSocket.recv(24).decode()
@@ -133,7 +127,8 @@ def server():
                     print("TotalMB= ", recieved_Megabytes)
                     print("MegaBytes per sek = ", recieved_Megabytes/realTime)
                     totalTransfer = int(convert_To_Type(recieved_Megabytes, args.format))
-                    totalOutputData = [[outputID, f"0-{round(currTime, 1)}", f"{totalTransfer} {args.format}", f"{round(recieved_Megabytes/realTime, 2)} Mbps"]]
+                    megaBitsPerSec = recieved_Megabytes*8
+                    totalOutputData = [[outputID, f"0-{round(realTime, 1)}", f"{totalTransfer} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
                     print(tabulate(totalOutputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                     break
 
@@ -161,7 +156,6 @@ def client(timeTimer):
     clientSocket.recv(1000).decode()
 
     startTime = time.time()
-    currTime = time.time() - startTime
     totalTime = args.time
     interval = args.interval
     maxBytes = args.num
@@ -185,17 +179,19 @@ def client(timeTimer):
         sent_Megabytes+=0.001
         totalBytes+=1000
         megaBytesTransfer+=0.001
+        currTime = time.time()-startTime
+        print(currTime)
         if(currTime > endInterval):
-            bandwidth = megaBytesTransfer/interval
+            megaBitsPerSec = megaBytesTransfer*8/interval
             megaBytesTransfer = convert_To_Type(megaBytesTransfer,args.format) 
-            outputData.append([outputID, f"{startInterval}-{round(currTime, 1)}", f"{megaBytesTransfer} {args.format}", f"{round(bandwidth,2)} Mbps"])
+            outputData.append([outputID, f"{startInterval}-{round(currTime, 1)}", f"{megaBytesTransfer} {args.format}", f"{round(megaBitsPerSec,2)} Mbps"])
             startInterval=round(currTime, 1)
             endInterval+=interval
             megaBytesTransfer=0
 
         #time based 
         if(timeTimer==True):        
-            if (currTime > int(totalTime)):
+            if (currTime > totalTime):
                 sendBye=True
         elif(timeTimer==False):
             if(totalBytes > maxBytes):
@@ -211,17 +207,17 @@ def client(timeTimer):
                 #print("ACK =", ackMsg)
                 realTime = time.time()-startTime
                 total_Transfer = int(convert_To_Type(sent_Megabytes, args.format))
+                megaBitsPerSec = total_Transfer*8
                 print("Virkelig totaltid =", realTime)
                 print(tabulate(outputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                 print("-----------------------------------------------")
                 print("Total values")
-                totalOutputData=[[outputID, f"0-{round(currTime, 1)}", f"{int(total_Transfer)} {args.format}", f"{round(sent_Megabytes/realTime, 2)} Mbps"]]
+                currtime=time.time()-startTime
+                totalOutputData=[[outputID, f"0-{round(currTime, 1)}", f"{int(total_Transfer)} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
                 print(tabulate(totalOutputData,headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                 clientSocket.close()
                 quit()      
-        currTime = time.time()-startTime
-        print(currTime)
-        print(totalTime)
+        
         
 
 parser = argparse.ArgumentParser(description="positional arguments")
