@@ -4,7 +4,8 @@ import ipaddress
 from socket import * 
 import time
 from tabulate import tabulate
-
+import threading
+import _thread as thread
 
 def validate_number(val):
     try:
@@ -45,8 +46,6 @@ def validate_serverip(val):
         quit()
     return value
     
-def create_parallel():
-    print("Laget parallel")
 
 def validate_num(val):
     #list = val.split()
@@ -87,38 +86,55 @@ def convert_To_Type(number, byteType):
     else:
         quit()
 
+def create_parallel(number):
+    positive_int(number)
+#   while True:
+    #    for i in range(number):
+     #       connectionSocket, addr = serverSocket.accept()
+      #      thread.start_new_thread(server, (connectionSocket, ))
 
+    
+def main():
+    print("Inne i thread")
 
-#Vi er her!
-def server():
-    print('A simpleperf server is listening on port', args.port)
     server_port = args.port
     server_ip = args.bind
+    serverSocket = socket(AF_INET, SOCK_STREAM)
+
+    outputID=f"{args.serverip}:{args.port}"
+    print("ETter attributter")
+    try:
+        serverSocket.bind((server_ip, server_port))
+    except:
+        print("Feil i bind")
+    serverSocket.listen(1)
+    while True:
+        print("Prøver å koble til")
+        connectionSocket, addr = serverSocket.accept()
+        print('A simpleperf server is listening on port', args.port)
+        print("Starting thread")
+        
+        thread.start_new_thread(handle_client, (connectionSocket,))
+    serverSocket.close()
+
+def handle_client(connectionSocket):
     outputID=f"{args.serverip}:{args.port}"
 
-    serverSocket = socket(AF_INET, SOCK_STREAM)
-    serverSocket.bind((server_ip, server_port))
-    serverSocket.listen(1)
+    #serverSocket = socket(AF_INET, SOCK_STREAM)
+    #serverSocket.bind((server_ip, server_port))
+    #serverSocket.listen(1)
     
-    
-    
-
     while True:
         try:
-            connectionSocket, addr = serverSocket.accept()
-            totalTime = int(connectionSocket.recv(1000).decode())
-            print("Totaltid =", totalTime)
-            connectionSocket.send("OK".encode())
-            
+           
             startTime = time.time() 
             recieved_Megabytes = 0
             
             #Timebased 
             while (True):
                 rec = connectionSocket.recv(1000)
-                recieved_Megabytes+=0.001
+                recieved_Megabytes+= len(rec)/1000000
                 if ("BYE" in rec.decode()):
-                    #byeMsg = connectionSocket.recv(24).decode()
                     print("Bye msg =", rec.decode())
                     connectionSocket.send("ACK".encode())
                     #print("Sender ack")
@@ -127,11 +143,16 @@ def server():
                     print("TotalMB= ", recieved_Megabytes)
                     print("MegaBytes per sek = ", recieved_Megabytes/realTime)
                     totalTransfer = int(convert_To_Type(recieved_Megabytes, args.format))
+                    print("Totaltransfer ok")
                     megaBitsPerSec = recieved_Megabytes*8
+                    print("megaBitsPerSec ok")
                     totalOutputData = [[outputID, f"0-{round(realTime, 1)}", f"{totalTransfer} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
+                    print("TOtal output ok")
                     print(tabulate(totalOutputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
+                    print("Tabell ok")
                     break
-
+            connectionSocket.close()
+            print("Etter conn close")   
         except:
             print("Noe gikk galt")
             quit()
@@ -143,6 +164,13 @@ def server():
 
 def client(timeTimer):
     print("Er i klient")
+    if(args.parallel):
+        for i in range(args.parallel-1):
+            server_addr = str(args.serverip)
+            server_port = args.port
+            clientSocket = socket(AF_INET, SOCK_STREAM)
+            clientSocket.connect((server_addr, server_port))
+
     print('A simpleperf client with', args.serverip," is connected with ", args.port)
     server_addr = str(args.serverip)
     server_port = args.port
@@ -152,8 +180,6 @@ def client(timeTimer):
 
     clientSocket = socket(AF_INET, SOCK_STREAM)
     clientSocket.connect((server_addr, server_port))
-    clientSocket.send(str(args.time).encode())
-    clientSocket.recv(1000).decode()
 
     startTime = time.time()
     totalTime = args.time
@@ -180,7 +206,6 @@ def client(timeTimer):
         totalBytes+=1000
         megaBytesTransfer+=0.001
         currTime = time.time()-startTime
-        print(currTime)
         if(currTime > endInterval):
             megaBitsPerSec = megaBytesTransfer*8/interval
             megaBytesTransfer = convert_To_Type(megaBytesTransfer,args.format) 
@@ -203,17 +228,17 @@ def client(timeTimer):
             clientSocket.send("BYE".encode())
             ackMsg = clientSocket.recv(200).decode()
     
-            if(ackMsg == "ACK"):
+            if('ACK' in ackMsg):
                 #print("ACK =", ackMsg)
                 realTime = time.time()-startTime
                 total_Transfer = int(convert_To_Type(sent_Megabytes, args.format))
                 megaBitsPerSec = total_Transfer*8
-                print("Virkelig totaltid =", realTime)
+                print("Real =", realTime)
+                print("Total MB = ", sent_Megabytes)
                 print(tabulate(outputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                 print("-----------------------------------------------")
                 print("Total values")
-                currtime=time.time()-startTime
-                totalOutputData=[[outputID, f"0-{round(currTime, 1)}", f"{int(total_Transfer)} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
+                totalOutputData=[[outputID, f"0-{round(realTime, 1)}", f"{int(total_Transfer)} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
                 print(tabulate(totalOutputData,headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                 clientSocket.close()
                 quit()      
@@ -233,7 +258,7 @@ parser.add_argument('-c', '--client', action='store_true')
 parser.add_argument('-I', '--serverip', type=validate_serverip, default="127.0.0.1")
 parser.add_argument('-t', '--time', type=positive_int, default=25)
 parser.add_argument('-i', '--interval', type=positive_int, default=1)
-parser.add_argument('-P', '--parallel', type=create_parallel)
+parser.add_argument('-P', '--parallel', type=positive_int, default=1)
 parser.add_argument('-n', '--num', type=validate_num)
 
 args = parser.parse_args() 
@@ -243,7 +268,7 @@ if (args.server and args.client) == True:
     print("You must either run in client mode or server mode, not both!")
     quit()
 if (args.server == True):
-    server()
+        main()
 if (args.client == True):
         timeTimer=True
         if(args.num):
@@ -260,4 +285,3 @@ def quit():
     print("Connection closed!")
     sys.exit()
     
-
