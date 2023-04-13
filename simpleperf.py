@@ -88,10 +88,8 @@ def convert_To_Type(number, byteType):
 
 def create_parallel(number):
     positive_int(number)
-#   while True:
-    #    for i in range(number):
-     #       connectionSocket, addr = serverSocket.accept()
-      #      thread.start_new_thread(server, (connectionSocket, ))
+
+
 
     
 def main():
@@ -100,6 +98,7 @@ def main():
     server_port = args.port
     server_ip = args.bind
     serverSocket = socket(AF_INET, SOCK_STREAM)
+    
 
     outputID=f"{args.serverip}:{args.port}"
     print("ETter attributter")
@@ -107,96 +106,84 @@ def main():
         serverSocket.bind((server_ip, server_port))
     except:
         print("Feil i bind")
+        sys.exit()
     serverSocket.listen(1)
+    print("-----------------------------------------------------------")
+    print("A simpleperf server is listening on port ", args.port)
+    print("-----------------------------------------------------------")
     while True:
-        print("Prøver å koble til")
         connectionSocket, addr = serverSocket.accept()
-        print('A simpleperf server is listening on port', args.port)
-        print("Starting thread")
-        
-        thread.start_new_thread(handle_client, (connectionSocket,))
+        thread.start_new_thread(handle_client, (connectionSocket,))  
+        print("Ny tråd") 
+
     serverSocket.close()
+    print("Serversocket closed")
 
 def handle_client(connectionSocket):
     outputID=f"{args.serverip}:{args.port}"
-
+    print("Inne i handle client")
     #serverSocket = socket(AF_INET, SOCK_STREAM)
     #serverSocket.bind((server_ip, server_port))
     #serverSocket.listen(1)
     
-    while True:
-        try:
-           
-            startTime = time.time() 
-            recieved_Megabytes = 0
-            
-            #Timebased 
-            while (True):
-                rec = connectionSocket.recv(1000)
-                recieved_Megabytes+= len(rec)/1000000
-                if ("BYE" in rec.decode()):
-                    print("Bye msg =", rec.decode())
-                    connectionSocket.send("ACK".encode())
-                    #print("Sender ack")
-                    realTime = time.time()-startTime
-                    print("Virkelig totaltid =", realTime)
-                    print("TotalMB= ", recieved_Megabytes)
-                    print("MegaBytes per sek = ", recieved_Megabytes/realTime)
-                    totalTransfer = int(convert_To_Type(recieved_Megabytes, args.format))
-                    print("Totaltransfer ok")
-                    megaBitsPerSec = recieved_Megabytes*8
-                    print("megaBitsPerSec ok")
-                    totalOutputData = [[outputID, f"0-{round(realTime, 1)}", f"{totalTransfer} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
-                    print("TOtal output ok")
-                    print(tabulate(totalOutputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
-                    print("Tabell ok")
-                    break
-            connectionSocket.close()
-            print("Etter conn close")   
-        except:
-            print("Noe gikk galt")
-            quit()
-
-
-#def newConnection():
-
-
+    startTime = time.time() 
+    recieved_Megabytes = 0
+    #Timebased 
+    while (True):
+        rec = connectionSocket.recv(1000)
+        recieved_Megabytes+= len(rec)/1000000
+        if ("BYE" in rec.decode()):
+            print("Bye msg =", rec.decode())
+            connectionSocket.send("ACK".encode())
+            #print("Sender ack")
+            realTime = time.time()-startTime
+            print("Virkelig totaltid =", realTime)
+            print("TotalMB= ", recieved_Megabytes)
+            print("MegaBytes per sek = ", recieved_Megabytes/realTime)
+            totalTransfer = int(convert_To_Type(recieved_Megabytes, args.format))
+            print("Totaltransfer ok")
+            megaBitsPerSec = recieved_Megabytes*8
+            print("megaBitsPerSec ok")
+            totalOutputData = [[outputID, f"0-{round(realTime, 1)}", f"{totalTransfer} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
+            print("TOtal output ok")
+            print(tabulate(totalOutputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
+            print("Tabell ok")
+            break
+    connectionSocket.close()
+    print("Etter conn close")  
 
 def client(timeTimer):
-    print("Er i klient")
-    if(args.parallel):
-        for i in range(args.parallel-1):
-            server_addr = str(args.serverip)
-            server_port = args.port
-            clientSocket = socket(AF_INET, SOCK_STREAM)
-            clientSocket.connect((server_addr, server_port))
-
-    print('A simpleperf client with', args.serverip," is connected with ", args.port)
-    server_addr = str(args.serverip)
-    server_port = args.port
-    data = bytes(1000)
-    print(timeTimer)
-
-
-    clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.connect((server_addr, server_port))
-
-    startTime = time.time()
-    totalTime = args.time
-    interval = args.interval
-    maxBytes = args.num
-    sendBye = False
-    
-    totalBytes=0
-    intervalTimer = 0
-    startInterval = 0
-    endInterval = startInterval+interval
-    sent_Megabytes = 0
-    outputData=[]
-    megaBytesTransfer=0
     print("-----------------------------------------------------------")
     print("A simpleperf client connecting to server ", args.serverip)
     print("-----------------------------------------------------------")
+    
+    for i in range(args.parallel):
+        print(i)
+        server_addr = str(args.serverip)
+        server_port = args.port
+        clientSocket = socket(AF_INET, SOCK_STREAM)
+        clientSocket.connect((server_addr, server_port))
+        print('A simpleperf client with', args.serverip," is connected with ", args.port)
+
+    
+    data = bytes(1000)
+    print(timeTimer)
+
+    startTime = time.time()
+    totalTime = args.time
+    maxBytes = args.num
+    sendBye = False
+    if (args.interval):
+        interval = args.interval
+        intervalTimer = 0
+        startInterval = 0
+        endInterval = startInterval+interval
+
+
+    totalBytes=0
+    megaBytesTransfer=0
+    sent_Megabytes = 0
+    outputData=[]
     outputID=f"{args.serverip}:{args.port}"
     print(maxBytes)
 
@@ -206,13 +193,16 @@ def client(timeTimer):
         totalBytes+=1000
         megaBytesTransfer+=0.001
         currTime = time.time()-startTime
-        if(currTime > endInterval):
-            megaBitsPerSec = megaBytesTransfer*8/interval
-            megaBytesTransfer = convert_To_Type(megaBytesTransfer,args.format) 
-            outputData.append([outputID, f"{startInterval}-{round(currTime, 1)}", f"{megaBytesTransfer} {args.format}", f"{round(megaBitsPerSec,2)} Mbps"])
-            startInterval=round(currTime, 1)
-            endInterval+=interval
-            megaBytesTransfer=0
+        if(args.interval):
+            print("yo")
+            if(currTime > endInterval):
+
+                megaBitsPerSec = megaBytesTransfer*8/interval
+                megaBytesTransfer = convert_To_Type(megaBytesTransfer,args.format) 
+                outputData.append([outputID, f"{startInterval}-{round(currTime, 1)}", f"{megaBytesTransfer} {args.format}", f"{round(megaBitsPerSec,2)} Mbps"])
+                startInterval=round(currTime, 1)
+                endInterval+=interval
+                megaBytesTransfer=0
 
         #time based 
         if(timeTimer==True):        
@@ -235,15 +225,14 @@ def client(timeTimer):
                 megaBitsPerSec = total_Transfer*8
                 print("Real =", realTime)
                 print("Total MB = ", sent_Megabytes)
-                print(tabulate(outputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
+                if (args.interval):
+                    print(tabulate(outputData, headers=["ID", "Interval", "Transfer", "Bandwidth"]))
                 print("-----------------------------------------------")
                 print("Total values")
                 totalOutputData=[[outputID, f"0-{round(realTime, 1)}", f"{int(total_Transfer)} {args.format}", f"{round(megaBitsPerSec/realTime, 2)} Mbps"]]
                 print(tabulate(totalOutputData,headers=["ID", "Interval", "Transfer", "Bandwidth"]))
-                clientSocket.close()
-                quit()      
-        
-        
+                break
+    clientSocket.close()
 
 parser = argparse.ArgumentParser(description="positional arguments")
 
@@ -257,7 +246,7 @@ parser.add_argument('-f', '--format', choices=('MB', 'KB', 'B'), default='MB')
 parser.add_argument('-c', '--client', action='store_true')
 parser.add_argument('-I', '--serverip', type=validate_serverip, default="127.0.0.1")
 parser.add_argument('-t', '--time', type=positive_int, default=25)
-parser.add_argument('-i', '--interval', type=positive_int, default=1)
+parser.add_argument('-i', '--interval', type=positive_int)
 parser.add_argument('-P', '--parallel', type=positive_int, default=1)
 parser.add_argument('-n', '--num', type=validate_num)
 
